@@ -6,7 +6,7 @@ MongoClient.connect('mongodb://localhost:27017/Users',(err,client)=>{
     console.log('Connected to Mongodb server');
     const db = client.db('Users');
     db.collection('Users').insertOne({
-        name:'Amit Patnaik',
+        name:'Asish Dash',
         age:25,
         location:'Bhubaneswar'
     },(err,res)=>{
