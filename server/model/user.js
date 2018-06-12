@@ -1,5 +1,5 @@
 var mongoose = require('mongoose');
-var User = mongoose.model('Person', {
+var User = mongoose.model('Entity', {
     email:{
         type:String,
         minlength:5,
