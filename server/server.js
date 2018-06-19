@@ -12,16 +12,47 @@ app.post('/todo',(req,res)=>{
     console.log("Request",req.body.email)
     var newUser = new User({
         email:req.body.email,
-        completed:req.body.completed,
-        completedAt:req.body.completedAt
+        password:req.body.password
     });
-    newUser.save().then((docs)=>{
-        res.status(200).send(docs)
-    },(e)=>{
-        res.status(400).send(e);
+    newUser.save().then(()=>{
+        return newUser.generateAuthTokens();
+    }).then((token)=>{
+        console.log("token",token)
+        res.header('x-auth',token).send(newUser);
         
-    });
+    }).catch((e)=>{
+        console.log(e)
+        res.status(400).send(e)
+    })
 });
+
+app.post('/createUser',(req,res)=>{
+    var body = _.pick(req.body,['email','password']);
+    console.log("Request --> ",req.body);
+    var data = new User(body);
+    data.save().then((doc)=>{
+        if(!doc){
+            return res.status(400).send({});
+        }
+        res.status(200).send(doc);
+    }).catch((error)=>{
+        res.status(400).send(`Error ${error}`);
+    })
+});
+
+app.get('/users/me',(req,res)=>{
+    var token = req.header('x-auth');
+    User.findByToken(token).then((user)=>{
+        console.log(user)
+        if(!user){
+            return Promise.reject();
+        }
+        res.status(200).send(user)
+    }).catch((e)=>{
+        console.log(e)
+        res.status(401).send({})
+    })
+ })
 app.get('/todo',(req,res)=>{
    User.find().then((user)=>{
        res.status(200).send({user})
