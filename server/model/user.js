@@ -37,7 +37,7 @@ var userSchema = new mongoose.Schema({
 userSchema.methods.toJSON = function(){
     var user = this;
     var userObj = user.toObject();
-    return _.pick(userObj,['email','tokens'])
+    return _.pick(userObj,['email','password','tokens'])
 }
 userSchema.statics.findByToken = function(token){
     var User = this;
@@ -61,30 +61,54 @@ userSchema.methods.generateAuthTokens = function(){
     var user = this;
     var access = "auth";
     var token = jwt.sign({_id:user._id.toHexString(),access},'123a').toString();
-    //user.tokens.push({access,token});
-    user.tokens = user.tokens.concat({access, token})
+    user.tokens={access,token};
+    //user.tokens = user.tokens.concat({access, token})
     return user.save().then(()=>{
         return token;
     })
 }
 userSchema.pre('save',function(next){
-    var user = this;
-    if(user.isModified('password')){
+    var User = this;
+    if(User.isModified('password')){
+        console.log("Invjkwbefkalid Username or Password")
         bcrypt.genSalt(10,(err,salt)=>{
             if(err){
                 console.log("Error in generating salt",err);
             }else{
-                bcrypt.hash(user.password,salt,(err,res)=>{
-                    user.password = res;
-                    next();
+                bcrypt.hash(User.password,salt,(err,res)=>{
+                    console.log(" in Invalid Username or Password")
+                    if(res){
+                        User.password = res;
+                        next();
+                    }else{
+                        console.log("Invalid Username or Password")
+                        return Promise.reject("Invalid Username or Password");
+                    }
                 })
             }   
         })
     }else{
+        
         next();
     }
-    
 })
+userSchema.statics.findByCredentials = function(email,password){
+    var User = this;
+    return User.findOne({email}).then((user)=>{
+        if(!user){
+            return Promise.reject();
+        }
+        return new Promise((resolve,reject)=>{
+            bcrypt.compare(password,user.password,(err,res)=>{
+                if(res){
+                    resolve(user);
+                }else{
+                    reject();
+                }
+            })
+        })
+    })
+};
 var User = mongoose.model('check',userSchema );
 module.exports = {
     User

@@ -28,17 +28,18 @@ app.post('/todo',(req,res)=>{
 
 app.post('/createUser',(req,res)=>{
     var body = _.pick(req.body,['email','password']);
-    console.log("Request --> ",req.body);
     var data = new User(body);
-    data.save().then((doc)=>{
-        if(!doc){
-            return res.status(400).send({});
-        }
-        res.status(200).send(doc);
-    }).catch((error)=>{
-        res.status(400).send(`Error ${error}`);
+    data.save().then(()=>{
+        return data.generateAuthTokens();
+    }).then((token)=>{
+        //console.log("token",token)
+        res.header('x-auth',token).send(data);
+    }).catch((e)=>{
+        console.log(e)
+        res.status(400).send(e)
     })
 });
+
 
 app.get('/users/me',(req,res)=>{
     var token = req.header('x-auth');
@@ -111,6 +112,27 @@ app.patch('/todo/:id',(req,res)=>{
         res.status(404).send(`Error ${error}`);
     })
 })
+
+
+//Login functionality
+app.post('/users/login',(req,res)=>{
+    var body = _.pick(req.body,['email','password']);
+    //res.send(body)
+    var data = new User(body);
+    console.log(data)
+    User.findByCredentials(data.email,data.password).then((user)=>{
+        return user.generateAuthTokens().then((token)=>{
+                res.header('x-auth',token).status(200).send({'results':{
+                    'status':'success',
+                    'endResult':0,
+                    'token':user.tokens
+                }})
+        })
+    }).catch((e)=>{
+        res.status(401).send(e);
+    })
+});
+
 
 app.listen(port,()=>{
     console.log("App started at",port);
