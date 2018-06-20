@@ -42,19 +42,15 @@ userSchema.methods.toJSON = function(){
 userSchema.statics.findByToken = function(token){
     var User = this;
     var decoded;
-    console.log("Token: ",token)
     try{
         decoded = jwt.verify(token,'123a')
     }catch(e){
-        console.log(e);
         return Promise.reject();
     }
-    console.log("Decoded ",decoded)
     return User.findOne({
         '_id':decoded._id,
         'tokens.token':token,
         'tokens.access':'auth'
-
     })
 }
 userSchema.methods.generateAuthTokens = function(){
@@ -65,6 +61,14 @@ userSchema.methods.generateAuthTokens = function(){
     //user.tokens = user.tokens.concat({access, token})
     return user.save().then(()=>{
         return token;
+    })
+}
+userSchema.methods.removeToken = function(token){
+    var user = this;
+    return user.update({
+        $pull:{
+            tokens:{token}
+        }
     })
 }
 userSchema.pre('save',function(next){

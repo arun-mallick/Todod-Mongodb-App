@@ -3,6 +3,7 @@ var bodyParser = require('body-parser');
 var port = process.env.PORT || 3000;
 var {mongoose} = require('./db/mongoose');
 var {User} = require('./model/user');
+var {authenticate} = require('./middleware/authenticate');
 const {ObjectId} = require('mongodb');
 const _ = require('lodash');
 var app = express();
@@ -26,34 +27,7 @@ app.post('/todo',(req,res)=>{
     })
 });
 
-app.post('/createUser',(req,res)=>{
-    var body = _.pick(req.body,['email','password']);
-    var data = new User(body);
-    data.save().then(()=>{
-        return data.generateAuthTokens();
-    }).then((token)=>{
-        //console.log("token",token)
-        res.header('x-auth',token).send(data);
-    }).catch((e)=>{
-        console.log(e)
-        res.status(400).send(e)
-    })
-});
 
-
-app.get('/users/me',(req,res)=>{
-    var token = req.header('x-auth');
-    User.findByToken(token).then((user)=>{
-        console.log(user)
-        if(!user){
-            return Promise.reject();
-        }
-        res.status(200).send(user)
-    }).catch((e)=>{
-        console.log(e)
-        res.status(401).send({})
-    })
- })
 app.get('/todo',(req,res)=>{
    User.find().then((user)=>{
        res.status(200).send({user})
@@ -132,7 +106,31 @@ app.post('/users/login',(req,res)=>{
         res.status(401).send(e);
     })
 });
+app.post('/createUser',(req,res)=>{
+    var body = _.pick(req.body,['email','password']);
+    var data = new User(body);
+    data.save().then(()=>{
+        return data.generateAuthTokens();
+    }).then((token)=>{
+        //console.log("token",token)
+        res.header('x-auth',token).send(data);
+    }).catch((e)=>{
+        console.log(e)
+        res.status(400).send(e)
+    })
+});
 
+
+app.get('/users/me',authenticate,(req,res)=>{
+    res.status(200).send(req.user)
+ });
+app.delete('/users/me/removeToken',authenticate,(req,res)=>{
+    req.user.removeToken(req.token).then(()=>{
+        res.status(200).send(req.user);
+    },(err)=>{
+        res.status(401).send();
+    })
+})
 
 app.listen(port,()=>{
     console.log("App started at",port);
